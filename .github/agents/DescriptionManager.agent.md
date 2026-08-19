@@ -36,8 +36,10 @@ For Python functions:
 Use my-style Python docstrings:
 
 ```python
-def _load_image(path: Path,
-                scale: float = 1.0) -> Image:
+def _load_image(
+        path: Path,
+        scale: float = 1.0
+) -> Image:
     """
     Function Details
     ================
@@ -74,7 +76,5 @@ def _load_image(path: Path,
 
     """
 ```
-
-Ensure the function name and parentheses are spaced such that each argument is on its own line, and spaced by 4 spaces (or a single tab).
 
 Descriptions must not go over the 79 character limit per line.
