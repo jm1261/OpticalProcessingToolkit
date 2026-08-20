@@ -283,8 +283,8 @@ def fano(data: np.ndarray) -> Dict:
 
 
 def RMSE(
-    data1: np.ndarray,
-    data2: np.ndarray
+        data1: np.ndarray,
+        data2: np.ndarray
 ) -> float:
     """
     Function Details

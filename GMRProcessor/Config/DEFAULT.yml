@@ -1,0 +1,37 @@
+###############################################################################
+###############################################################################
+#                                Configuration                                #
+#                             Author: Joshua Male                             #
+#                              Date: 19/08/2026                               #
+#                    Description: Configuration Parameters                    #
+#                            Project: GMRProcessor                            #
+#                                                                             #
+#                         Script designed for Python 3                        #
+#                           © Copyright Joshua Male                           #
+#                                                                             #
+#                            Software release: 0.1                            #
+###############################################################################
+###############################################################################
+
+# Sensor
+GMR_ID: GMR_ID
+SENSOR_SERIAL_NUMBER: 000001
+SETUP_SERIAL_NUMBER: 000001
+MEASUREMENT_TYPE: MEASUREMENT_TYPE
+SENSOR_TYPE: UoY
+CHIP_TYPE: 4
+
+# Data
+ROOT_PATH: /path/to/root/directory
+DATA_FORMAT: experimental
+IMAGE_TYPE: tif
+SAVE_PATH: /path/to/save/directory
+FIGURE_FILENAME: filename
+
+# Image
+ANALYSIS_METHOD: gaussian
+NUMBER_SUB_ROIS: 0
+
+# Device
+DEVICE_SERIAL_NUMBER: 000001
+MEASUREMENT_INTERVAL: 60
