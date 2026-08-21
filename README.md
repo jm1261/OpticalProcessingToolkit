@@ -1,6 +1,6 @@
 # OpticalProcessingToolkit
 
-OpticalProcessingToolkit contains Python tools for optical data and image processing. The current project, `GMRProcessor`, supports guided-mode resonance (GMR) image analysis, experiment configuration, and application logging.
+OpticalProcessingToolkit contains Python tools for optical data and image processing. It includes `GMRProcessor` for guided-mode resonance (GMR) image analysis and `RamanSpectroscopy` for Raman CSV input and application logging.
 
 ## Contents
 
@@ -16,7 +16,10 @@ OpticalProcessingToolkit contains Python tools for optical data and image proces
 
 ## Overview
 
-`GMRProcessor` is the repository's current project. It contains configuration files, file and path helpers, image-analysis methods, experiment scripts, and logging support. No other top-level project is currently present.
+This repository contains two Python projects:
+
+- `GMRProcessor` contains configuration files, file and path helpers, image-analysis methods, experiment scripts, and logging support.
+- `RamanSpectroscopy` contains Raman CSV input support and project-specific logging support.
 
 ## Prerequisites
 
@@ -30,14 +33,36 @@ The repository has no dependency manifest. It does not provide a `requirements.t
 1. Open the repository root as the working directory.
 2. Select a Python 3 interpreter with the imported packages available.
 3. Replace the placeholder values in `GMRProcessor/Config/DEFAULT.yml` for the experiment you want to process.
-4. For the time experiment, update the hard-coded paths in `GMRProcessor/ExperimentScripts/TimeExperiment.py` before running it.
+4. Create or edit the root-level `local_config.yml` file and set both required YAML keys, `GMR_DATA_ROOT` and `RAMAN_DATA_ROOT`, to the local parent directories that contain the experiment data.
 5. Preview application-log cleanup:
 
    ```powershell
    python GMRProcessor/Logging/cleanup_logs.py --dry-run
    ```
 
+   To preview cleanup for RamanSpectroscopy logs, run:
+
+   ```powershell
+   python RamanSpectroscopy/Logging/cleanup_logs.py --dry-run
+   ```
+
 Run the command without `--dry-run` only when you want to delete matching log files that contain no retention marker.
+
+The local configuration file is required by both experiment scripts and uses
+this format. Replace the example paths with paths appropriate to your local
+data layout:
+
+```yaml
+GMR_DATA_ROOT: D:/data/gmr
+RAMAN_DATA_ROOT: D:/data/raman
+```
+
+`local_config.yml` is ignored by Git through the `local_config.yml` rule in
+`.gitignore`, so local directory paths remain outside version control. The
+scripts do not read data from these roots directly; they append their
+project-specific experiment directory names. `TimeExperiment.py` requires
+`GMR_DATA_ROOT`, and `IntegrationTime.py` requires `RAMAN_DATA_ROOT`; missing
+keys raise `KeyError` when the scripts load the YAML file.
 
 ## Configuration
 
@@ -55,7 +80,13 @@ The files in `GMRProcessor/Config/` define the current configuration data:
 
 ### Run the time experiment
 
-Before using this command, note that `TimeExperiment.py` contains hard-coded `K://Josh/Phorest/SodiumHydroxideExperiment/IE2607` and `K://Josh/Phorest/SodiumHydroxideExperiment/ProcessedData` paths. It expects the experiment directories to exist. ROI processing and result plotting are placeholders; the script currently discovers sample directories, creates and reloads image-specific configuration files, and logs their paths.
+Before using this command, set the `GMR_DATA_ROOT` key in `local_config.yml`.
+The script derives these directories:
+
+- Measurements: `<GMR_DATA_ROOT>/Phorest/SodiumHydroxideExperiment/IE2607`
+- Results: `<GMR_DATA_ROOT>/Phorest/SodiumHydroxideExperiment/ProcessedData`
+
+The measurements directory must exist and contain sample directories. The results directory is passed to generated configurations as the save path; the script does not create or populate it yet. Sample directory names must contain two or three underscore-separated parts, such as `0_Hours_260818`, for the information/date lookup. ROI processing and result plotting are placeholders; the script currently discovers sample directories, creates and reloads image-specific configuration files, and logs their paths.
 
 ```powershell
 python GMRProcessor/ExperimentScripts/TimeExperiment.py
@@ -69,6 +100,26 @@ These bootstrap scripts load `GMRProcessor/Logging/logging.conf`, add the projec
 python GMRProcessor/ImageUtils/InitializeImageUtils.py
 python GMRProcessor/GeneralUtils/InitializeGeneralUtils.py
 python GMRProcessor/ExperimentScripts/InitializeScripts.py
+```
+
+### Initialize RamanSpectroscopy logging
+
+Run the RamanSpectroscopy bootstrap script from the repository root to configure its console and rotating file handlers:
+
+```powershell
+python RamanSpectroscopy/GeneralUtils/InitializeGeneralUtils.py
+```
+
+### Run Raman integration-time setup
+
+Before using this script, set the `RAMAN_DATA_ROOT` key in
+`local_config.yml`. It derives `<RAMAN_DATA_ROOT>/TPBExperiment` and prints
+the resulting directory iterator. The current script does not iterate over
+the directory, read CSV files, or perform integration-time processing, so no
+additional file layout is verified here.
+
+```powershell
+python RamanSpectroscopy/ExperimentScripts/IntegrationTime.py
 ```
 
 ## Project and API reference
@@ -112,6 +163,28 @@ The Gaussian and Fano functions use array indices as x positions and define thei
 
 Generated application logs are runtime files and are not part of the repository layout.
 
+### `RamanSpectroscopy/`
+
+`RamanSpectroscopy` contains Raman CSV input support, the integration-time experiment script, and project-specific logging configuration. It has no configuration files.
+
+#### `RamanSpectroscopy/ExperimentScripts/`
+
+`InitializeScripts.py` initializes project logging. `IntegrationTime.py` derives the `TPBExperiment` data path from `RAMAN_DATA_ROOT`, but does not yet read data or perform integration-time processing.
+
+#### `RamanSpectroscopy/GeneralUtils/`
+
+`InitializeGeneralUtils.py` adds the project directory to `sys.path`, loads `Logging/logging.conf`, supplies the log directory and current date to the configuration, and emits an initialization message. `FileIO.py` defines:
+
+- `load_csv(file_path: Path) -> tuple[np.ndarray, np.ndarray]` reads a Raman CSV file and returns wavelength and intensity columns as one-dimensional NumPy arrays. The pandas path reads rows after the first 32 header rows and skips the final footer row. If pandas is unavailable, the function uses Python's `csv` module with the same row positions. File I/O and numeric conversion errors propagate.
+
+#### `RamanSpectroscopy/Logging/`
+
+`logging.conf` configures INFO-level console and timed rotating file handlers. The file handler writes `application_<YYYY-MM-DD>.log` at midnight and retains 30 backups. `cleanup_logs.py` defines:
+
+- `contains_retain_marker(log_file: Path) -> bool` returns `True` when a log contains `ERROR`, `WARNING`, `FAILURE`, or `FAILED`, case-insensitively. Read errors raise `OSError`.
+- `cleanup_logs(log_directory: Path, dry_run: bool = False) -> tuple[int, int]` scans regular files beginning with `application_`, deletes or previews files without a retention marker, and returns deleted-or-previewed and retained counts. Inspection and deletion errors raise `OSError`.
+- `main() -> None` parses `--dry-run`, processes the script's own logging directory, and prints the cleanup summary.
+
 ## Repository layout
 
 ```text
@@ -139,6 +212,16 @@ Generated application logs are runtime files and are not part of the repository 
 │   └── Logging/
 │       ├── cleanup_logs.py
 │       └── logging.conf
+├── RamanSpectroscopy/
+│   ├── ExperimentScripts/
+│   │   ├── InitializeScripts.py
+│   │   └── IntegrationTime.py
+│   ├── GeneralUtils/
+│   │   ├── FileIO.py
+│   │   └── InitializeGeneralUtils.py
+│   └── Logging/
+│       ├── cleanup_logs.py
+│       └── logging.conf
 └── README.md
 ```
 
@@ -146,10 +229,12 @@ Generated application logs are runtime files and are not part of the repository 
 
 Named module loggers propagate to the root logger, which writes to the console and rotating application log. `.gitignore` excludes `*.log` files and common Python cache, build, coverage, and environment artifacts.
 
+`GMRProcessor` and `RamanSpectroscopy` use separate logging configurations in their respective `Logging/` directories. RamanSpectroscopy's configuration writes INFO-level records to `stderr` and to a midnight-rotating `application_<YYYY-MM-DD>.log` file with 30 backups. Its cleanup command retains matching log files that contain `ERROR`, `WARNING`, `FAILURE`, or `FAILED`; use `--dry-run` to preview deletions.
+
 ## Testing
 
 No automated test suite exists, and no dependency manifest is available. Use targeted checks or Python compilation checks when validating changes, for example:
 
 ```powershell
-python -m py_compile GMRProcessor/GeneralUtils/FileIO.py GMRProcessor/ImageUtils/AnalysisMethods.py GMRProcessor/Logging/cleanup_logs.py
+python -m py_compile GMRProcessor/GeneralUtils/FileIO.py GMRProcessor/ImageUtils/AnalysisMethods.py GMRProcessor/Logging/cleanup_logs.py RamanSpectroscopy/GeneralUtils/FileIO.py RamanSpectroscopy/GeneralUtils/InitializeGeneralUtils.py RamanSpectroscopy/Logging/cleanup_logs.py
 ```

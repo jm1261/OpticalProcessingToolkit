@@ -17,6 +17,7 @@
 import InitializeScripts  #noqa
 
 import logging
+import yaml
 import GeneralUtils.FileIO as io
 
 from pathlib import Path
@@ -25,16 +26,20 @@ from pathlib import Path
 logger = logging.getLogger(name=Path(__file__).stem)
 
 # Define the path to the experiment
+config_path = Path(__file__).resolve().parents[2] / 'local_config.yml'
+with config_path.open(mode='r', encoding='utf-8') as config_file:
+    local_config = yaml.safe_load(config_file)
+
 experiment = {
     "Root Path": Path(Path().absolute(), 'GMRProcessor'),
     "Experiment Path": Path(
-        'K://Josh',
+        local_config['GMR_DATA_ROOT'],
         'Phorest',
         'SodiumHydroxideExperiment',
         'IE2607'
     ),
     "Results Path": Path(
-        'K://Josh',
+        local_config['GMR_DATA_ROOT'],
         'Phorest',
         'SodiumHydroxideExperiment',
         'ProcessedData'
